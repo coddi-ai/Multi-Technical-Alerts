@@ -84,23 +84,11 @@ def create_reports_tab() -> dbc.Container:
             )
         ], className="mb-4"),
         
-        # SECTION 1: Analysis Section - Radar charts + Value Analysis Table
+        # SECTION 1: Analysis Section - Radar charts with tables per GroupElement
         dbc.Card([
             dbc.CardHeader("📊 Report Analysis", className="fw-bold"),
             dbc.CardBody([
-                dbc.Row([
-                    # Left: Radar Charts by GroupElement
-                    dbc.Col([
-                        html.H5("Radar Charts by Group", className="mb-3"),
-                        html.Div(id='reports-radar-charts-container')
-                    ], width=8),
-                    
-                    # Right: Value Analysis Table
-                    dbc.Col([
-                        html.H5("Value Analysis", className="mb-3"),
-                        html.Div(id='reports-value-analysis-table')
-                    ], width=4)
-                ])
+                html.Div(id='reports-radar-charts-container')  # Contains grouped sections
             ])
         ], className="mb-4"),
         

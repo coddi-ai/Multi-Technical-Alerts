@@ -76,6 +76,7 @@ data/oil/to_consume/*
 !data/oil/raw/.gitkeep
 !data/oil/processed/.gitkeep
 !data/oil/to_consume/.gitkeep
+alerts_dashboard_production/
 
 # Keep essays_elements.xlsx
 !data/oil/essays_elements.xlsx

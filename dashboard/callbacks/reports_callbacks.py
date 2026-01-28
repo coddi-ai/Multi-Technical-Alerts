@@ -32,11 +32,12 @@ def register_reports_callbacks(app):
         [Output('reports-familia-selector', 'options'),
          Output('reports-familia-selector', 'value')],
         [Input('client-selector', 'value'),
-         Input('navigation-state', 'data')]
+         Input('navigation-state', 'data')],
+        [State('reports-familia-selector', 'value')]
     )
-    def update_familia_options(client, nav_state):
+    def update_familia_options(client, nav_state, current_familia):
         """Update familia (machine type) options."""
-        logger.info(f"update_familia_options called: client={client}, nav_state={nav_state}")
+        logger.info(f"update_familia_options called: client={client}, nav_state={nav_state}, current={current_familia}")
         
         if not client:
             return [], None
@@ -57,8 +58,12 @@ def register_reports_callbacks(app):
             if nav_state and nav_state.get('familia'):
                 default_value = nav_state['familia']
                 logger.info(f"Using familia from navigation: {default_value}")
+            elif current_familia and current_familia in familias:
+                # Keep current selection if valid
+                default_value = current_familia
+                logger.info(f"Keeping current familia: {default_value}")
             else:
-                # Auto-select first familia
+                # Auto-select first familia only on initial load
                 default_value = familias[0] if familias else None
                 logger.info(f"Auto-selecting first familia: {default_value}")
             
@@ -75,11 +80,12 @@ def register_reports_callbacks(app):
          Output('reports-equipo-selector', 'value')],
         [Input('reports-familia-selector', 'value'),
          Input('client-selector', 'value'),
-         Input('navigation-state', 'data')]
+         Input('navigation-state', 'data')],
+        [State('reports-equipo-selector', 'value')]
     )
-    def update_equipo_options(familia, client, nav_state):
+    def update_equipo_options(familia, client, nav_state, current_equipo):
         """Update equipo (unitId) options."""
-        logger.info(f"update_equipo_options called: familia={familia}, client={client}, nav_state={nav_state}")
+        logger.info(f"update_equipo_options called: familia={familia}, client={client}, nav_state={nav_state}, current={current_equipo}")
         
         if not familia or not client:
             return [], None
@@ -101,6 +107,10 @@ def register_reports_callbacks(app):
             if nav_state and nav_state.get('equipo'):
                 default_value = nav_state['equipo']
                 logger.info(f"Using equipo from navigation: {default_value}")
+            elif current_equipo and current_equipo in equipos:
+                # Keep current selection if still valid
+                default_value = current_equipo
+                logger.info(f"Keeping current equipo: {default_value}")
             else:
                 # Auto-select first equipo
                 default_value = equipos[0] if equipos else None
@@ -122,11 +132,12 @@ def register_reports_callbacks(app):
          Input('reports-familia-selector', 'value'),
          Input('client-selector', 'value'),
          Input('navigation-state', 'data')],
+        [State('reports-component-selector', 'value')],
         prevent_initial_call=True
     )
-    def update_component_options(equipo, familia, client, nav_state):
+    def update_component_options(equipo, familia, client, nav_state, current_component):
         """Update component options."""
-        logger.info(f"update_component_options called: equipo={equipo}, familia={familia}, client={client}, nav_state={nav_state}")
+        logger.info(f"update_component_options called: equipo={equipo}, familia={familia}, client={client}, nav_state={nav_state}, current={current_component}")
         
         if not equipo or not familia or not client:
             return [], None, None
@@ -150,6 +161,11 @@ def register_reports_callbacks(app):
                 logger.info(f"Using component from navigation: {default_value}")
                 # Clear navigation state after using it
                 return options, default_value, None
+            elif current_component and current_component in components:
+                # Keep current selection if still valid
+                default_value = current_component
+                logger.info(f"Keeping current component: {default_value}")
+                return options, default_value, nav_state
             else:
                 # Auto-select first component
                 default_value = components[0] if components else None
@@ -168,11 +184,12 @@ def register_reports_callbacks(app):
         [Input('reports-component-selector', 'value'),
          Input('reports-equipo-selector', 'value'),
          Input('reports-familia-selector', 'value'),
-         Input('client-selector', 'value')]
+         Input('client-selector', 'value')],
+        [State('reports-date-selector', 'value')]
     )
-    def update_date_options(component, equipo, familia, client):
+    def update_date_options(component, equipo, familia, client, current_date):
         """Update sample date options (most recent first)."""
-        logger.info(f"update_date_options called: client={client}, familia={familia}, equipo={equipo}, component={component}")
+        logger.info(f"update_date_options called: client={client}, familia={familia}, equipo={equipo}, component={component}, current={current_date}")
         
         if not all([component, equipo, familia, client]):
             logger.warning(f"Missing parameters: component={component}, equipo={equipo}, familia={familia}, client={client}")
@@ -209,8 +226,17 @@ def register_reports_callbacks(app):
             options = [{'label': pd.to_datetime(d).strftime('%Y-%m-%d'), 'value': str(d)} 
                       for d in dates]
             
-            # Auto-select most recent date (index 0)
-            default_value = str(dates[0]) if len(dates) > 0 else None
+            # Get string representations for comparison
+            date_strs = [str(d) for d in dates]
+            
+            # Preserve current selection if it's still valid
+            if current_date and current_date in date_strs:
+                default_value = current_date
+                logger.info(f"Keeping current date: {default_value}")
+            else:
+                # Auto-select most recent date (index 0)
+                default_value = str(dates[0]) if len(dates) > 0 else None
+                logger.info(f"Auto-selecting most recent date: {default_value}")
             
             logger.info(f"Returning {len(options)} date options, default={default_value}")
             return options, default_value
@@ -224,7 +250,6 @@ def register_reports_callbacks(app):
     @app.callback(
         [Output('reports-sample-info-display', 'children'),
          Output('reports-radar-charts-container', 'children'),
-         Output('reports-value-analysis-table', 'children'),
          Output('reports-ai-recommendation-display', 'children'),
          Output('reports-essays-selector', 'options'),
          Output('reports-historical-comparison', 'children')],
@@ -242,7 +267,7 @@ def register_reports_callbacks(app):
         
         if not all([sample_date, component, equipo, familia, client]):
             logger.warning(f"Missing parameters in update_report_display")
-            return ("Select filters to view report", "", "", 
+            return ("Select filters to view report", "", 
                    "No recommendation", [], "No data")
         
         settings = get_settings()
@@ -253,7 +278,7 @@ def register_reports_callbacks(app):
         
         if not reports_file.exists():
             logger.error(f"Reports file not found: {reports_file}")
-            return ("No data available", "", "",
+            return ("No data available", "",
                    "No recommendation", [], "No data")
         
         try:
@@ -276,7 +301,7 @@ def register_reports_callbacks(app):
             
             if sample_df.empty:
                 logger.warning(f"No sample found after filtering")
-                return ("No sample found", "", "",
+                return ("No sample found", "",
                        "No recommendation", [], "No data")
             
             sample = sample_df.iloc[0]
@@ -285,27 +310,24 @@ def register_reports_callbacks(app):
             # 1. Sample Info Card
             info = create_sample_info_card(sample)
             
-            # 2. Radar Charts by GroupElement
+            # 2. Radar Charts by GroupElement (includes tables)
             radar_charts = create_radar_charts_by_group(sample, limits, df)
             
-            # 3. Value Analysis Table
-            value_table = create_value_analysis_table(sample, limits)
-            
-            # 4. AI Recommendation
+            # 3. AI Recommendation
             ai_display = create_ai_recommendation_display(sample)
             
-            # 5. Essay options for time series
+            # 4. Essay options for time series
             essay_options = get_essay_options(df)
             
-            # 6. Historical Comparison
+            # 5. Historical Comparison
             historical_comp = create_historical_comparison(sample, df, equipo, component)
             
             logger.info("Successfully generated all report components")
-            return info, radar_charts, value_table, ai_display, essay_options, historical_comp
+            return info, radar_charts, ai_display, essay_options, historical_comp
             
         except Exception as e:
             logger.exception(f"Error in update_report_display: {e}")
-            return (f"Error: {str(e)}", "", "",
+            return (f"Error: {str(e)}", "",
                    "Error", [], "Error")
     
     
@@ -525,9 +547,10 @@ def normalize_value(value, normal, alert, critic):
 
 
 def create_radar_charts_by_group(sample, limits, df):
-    """Create radar charts grouped by GroupElement."""
+    """Create radar charts grouped by GroupElement with corresponding value tables."""
     import plotly.graph_objects as go
     from pathlib import Path
+    from dash import dcc
     
     # Load essays_elements to get GroupElement mapping
     essays_file = Path("data/oil/essays_elements.xlsx")
@@ -660,13 +683,96 @@ def create_radar_charts_by_group(sample, limits, df):
                 margin=dict(l=50, r=50, t=50, b=50)
             )
             
+            # Create value table for this group
+            group_table_data = []
+            for i, essay in enumerate(valid_essays):
+                value = actual_values[i]
+                normal = comp_limits[essay].get('threshold_normal', 0)
+                alert = comp_limits[essay].get('threshold_alert', 0)
+                critic = comp_limits[essay].get('threshold_critic', 0)
+                
+                # Determine status
+                if value >= critic:
+                    status = 'Crítico'
+                    color = '#dc3545'  # red
+                elif value >= alert:
+                    status = 'Condenatorio'
+                    color = '#fd7e14'  # orange
+                elif value >= normal:
+                    status = 'Marginal'
+                    color = '#ffc107'  # yellow
+                else:
+                    status = 'Normal'
+                    color = '#28a745'  # green
+                
+                group_table_data.append({
+                    'essay': essay,
+                    'value': round(value, 2),
+                    'status': status,
+                    'normal': round(normal, 2),
+                    'alert': round(alert, 2),
+                    'critic': round(critic, 2),
+                    '_color': color
+                })
+            
+            # Sort by status severity
+            status_order = {'Crítico': 0, 'Condenatorio': 1, 'Marginal': 2, 'Normal': 3}
+            group_table_data.sort(key=lambda x: (status_order.get(x['status'], 4), x['essay']))
+            
+            # Create table for this group
+            group_table = dash_table.DataTable(
+                columns=[
+                    {'name': 'Essay', 'id': 'essay'},
+                    {'name': 'Value', 'id': 'value', 'type': 'numeric'},
+                    {'name': 'Status', 'id': 'status'},
+                    {'name': 'Normal', 'id': 'normal', 'type': 'numeric'},
+                    {'name': 'Alert', 'id': 'alert', 'type': 'numeric'},
+                    {'name': 'Critic', 'id': 'critic', 'type': 'numeric'}
+                ],
+                data=[{k: v for k, v in item.items() if k != '_color'} for item in group_table_data],
+                style_cell={
+                    'textAlign': 'left',
+                    'padding': '8px',
+                    'fontSize': '12px',
+                    'overflow': 'hidden',
+                    'textOverflow': 'ellipsis',
+                    'maxWidth': 0
+                },
+                style_header={
+                    'backgroundColor': '#17a2b8',
+                    'color': 'white',
+                    'fontWeight': 'bold',
+                    'textAlign': 'center'
+                },
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': i, 'column_id': 'status'},
+                        'backgroundColor': item['_color'],
+                        'color': 'white' if item['_color'] in ['#dc3545', '#17a2b8', '#28a745'] else 'black',
+                        'fontWeight': 'bold'
+                    }
+                    for i, item in enumerate(group_table_data)
+                ],
+                page_size=10,
+                style_table={'overflowX': 'auto'}
+            )
+            
+            # Add section for this GroupElement
             charts.append(
-                dbc.Col([
-                    dcc.Graph(figure=fig, config={'displayModeBar': False})
-                ], width=6, className="mb-3")
+                html.Div([
+                    html.H5(f"📊 {group_name}", className="mt-3 mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Graph(figure=fig, config={'displayModeBar': False})
+                        ], width=6),
+                        dbc.Col([
+                            group_table
+                        ], width=6)
+                    ])
+                ], className="mb-4")
             )
         
-        return dbc.Row(charts) if charts else html.P("No radar data available", className="text-muted")
+        return html.Div(charts) if charts else html.P("No radar data available", className="text-muted")
         
     except Exception as e:
         logger.exception(f"Error creating radar charts: {e}")
@@ -713,16 +819,16 @@ def create_value_analysis_table(sample, limits):
                 # Determine status
                 if value >= critic:
                     status = 'Crítico'
-                    color = '#dc3545'
+                    color = '#dc3545'  # red
                 elif value >= alert:
-                    status = 'Alerta'
-                    color = '#ffc107'
+                    status = 'Condenatorio'
+                    color = '#fd7e14'  # orange
                 elif value >= normal:
                     status = 'Marginal'
-                    color = '#17a2b8'
+                    color = '#ffc107'  # yellow
                 else:
                     status = 'Normal'
-                    color = '#28a745'
+                    color = '#28a745'  # green
                 
                 analysis_data.append({
                     'essay': col,
@@ -740,7 +846,7 @@ def create_value_analysis_table(sample, limits):
         return html.P("No analysis data available", className="text-muted")
     
     # Sort by status severity
-    status_order = {'Crítico': 0, 'Alerta': 1, 'Marginal': 2, 'Normal': 3}
+    status_order = {'Crítico': 0, 'Condenatorio': 1, 'Marginal': 2, 'Normal': 3}
     analysis_data.sort(key=lambda x: (status_order.get(x['status'], 4), x['essay']))
     
     # Create table
@@ -904,29 +1010,6 @@ def create_historical_comparison(sample, df, equipo, component):
     return html.Div([info_cards, table])
 
 
-def create_radar_for_sample(sample, limits, df):
-    """Create radar chart for sample."""
-    try:
-        group_element = sample.get('group_element', 'N/A')
-        
-        # Get all numeric essay columns
-        metadata_cols = {'client', 'sampleNumber', 'sampleDate', 'unitId', 'machineName', 
-                        'machineModel', 'machineBrand', 'machineHours', 'machineSerialNumber',
-                        'componentName', 'componentHours', 'componentSerialNumber',
-                        'oilMeter', 'oilBrand', 'oilType', 'oilWeight',
-                        'previousSampleNumber', 'previousSampleDate', 'daysSincePrevious',
-                        'group_element', 'essays_broken', 'severity_score', 'report_status',
-                        'breached_essays', 'ai_recommendation', 'ai_generated_at',
-                        'unitId_generated', 'componentName_generated', 'sampleDate_generated', 'client_generated'}
-        essays = [col for col in df.columns if col not in metadata_cols]
-        
-        return create_radar_chart(sample, limits, group_element, essays[:12])  # Limit to 12 for readability
-        
-    except Exception as e:
-        from plotly.graph_objects import Figure
-        return Figure()
-
-
 def create_ai_recommendation_display(sample):
     """Create AI recommendation display."""
     ai_rec = sample.get('ai_recommendation', 'No AI recommendation available for this sample.')
@@ -942,138 +1025,6 @@ def create_ai_recommendation_display(sample):
         html.Hr(),
         html.P(ai_rec, style={'whiteSpace': 'pre-wrap'})
     ], color=status_color)
-
-
-def create_breached_essays_table(sample):
-    """Create breached essays table."""
-    breached = sample.get('breached_essays', [])
-    
-    # Handle different data types
-    if isinstance(breached, str):
-        try:
-            breached = json.loads(breached) if breached else []
-        except:
-            breached = []
-    elif hasattr(breached, '__iter__') and not isinstance(breached, (list, dict)):
-        # Convert numpy array or pandas Series to list
-        try:
-            breached = breached.tolist() if hasattr(breached, 'tolist') else list(breached)
-        except:
-            breached = []
-    
-    # Check if empty - use len() instead of truthiness
-    if not breached or len(breached) == 0:
-        return dbc.Alert("✅ No essays breached thresholds", color="success", className="mb-0")
-    
-    breached_df = pd.DataFrame(breached)
-    
-    return dash_table.DataTable(
-        columns=[
-            {'name': 'Essay', 'id': 'essay'},
-            {'name': 'Value', 'id': 'value', 'type': 'numeric', 'format': {'specifier': '.2f'}},
-            {'name': 'Threshold', 'id': 'threshold'},
-            {'name': 'Limit', 'id': 'limit', 'type': 'numeric', 'format': {'specifier': '.2f'}},
-            {'name': 'Points', 'id': 'points', 'type': 'numeric'}
-        ],
-        data=breached_df.to_dict('records'),
-        style_cell={'textAlign': 'left', 'padding': '10px', 'fontSize': '13px'},
-        style_header={
-            'backgroundColor': '#dc3545',
-            'color': 'white',
-            'fontWeight': 'bold',
-            'textAlign': 'center'
-        },
-        style_data_conditional=[
-            {
-                'if': {'column_id': 'threshold'},
-                'fontWeight': 'bold'
-            }
-        ],
-        sort_action='native'
-    )
-
-
-def create_comparison_table(sample, limits):
-    """Create comparison table showing values vs all thresholds."""
-    if limits is None:
-        return html.P("No limits data available", className="text-muted")
-    
-    # Get essays with values
-    metadata_cols = {'client', 'sampleNumber', 'sampleDate', 'unitId', 'machineName', 
-                    'machineModel', 'machineBrand', 'machineHours', 'machineSerialNumber',
-                    'componentName', 'componentHours', 'componentSerialNumber',
-                    'oilMeter', 'oilBrand', 'oilType', 'oilWeight',
-                    'previousSampleNumber', 'previousSampleDate', 'daysSincePrevious',
-                    'group_element', 'essays_broken', 'severity_score', 'report_status',
-                    'breached_essays', 'ai_recommendation', 'ai_generated_at',
-                    'unitId_generated', 'componentName_generated', 'sampleDate_generated', 'client_generated'}
-    
-    comparison_data = []
-    
-    for col in sample.index:
-        if col not in metadata_cols and pd.notna(sample[col]):
-            try:
-                value = float(sample[col])
-                
-                # Find limits for this essay
-                machine = sample.get('machineName', '')
-                component = sample.get('componentName', '')
-                
-                essay_limits = limits[
-                    (limits['machine'] == machine) & 
-                    (limits['component'] == component) & 
-                    (limits['essay'] == col)
-                ]
-                
-                if not essay_limits.empty:
-                    limit_row = essay_limits.iloc[0]
-                    comparison_data.append({
-                        'essay': col,
-                        'value': round(value, 2),
-                        'normal': round(limit_row.get('threshold_normal', 0), 2),
-                        'alert': round(limit_row.get('threshold_alert', 0), 2),
-                        'critic': round(limit_row.get('threshold_critic', 0), 2)
-                    })
-            except:
-                continue
-    
-    if not comparison_data:
-        return html.P("No comparison data available", className="text-muted")
-    
-    comp_df = pd.DataFrame(comparison_data).head(20)  # Limit to 20 rows
-    
-    return dash_table.DataTable(
-        columns=[
-            {'name': 'Essay', 'id': 'essay'},
-            {'name': 'Value', 'id': 'value', 'type': 'numeric'},
-            {'name': 'Normal (90%)', 'id': 'normal', 'type': 'numeric'},
-            {'name': 'Alert (95%)', 'id': 'alert', 'type': 'numeric'},
-            {'name': 'Critic (98%)', 'id': 'critic', 'type': 'numeric'}
-        ],
-        data=comp_df.to_dict('records'),
-        style_cell={'textAlign': 'center', 'padding': '8px', 'fontSize': '12px'},
-        style_header={
-            'backgroundColor': '#17a2b8',
-            'color': 'white',
-            'fontWeight': 'bold'
-        },
-        style_data_conditional=[
-            {
-                'if': {'column_id': 'normal'},
-                'backgroundColor': '#d4edda'
-            },
-            {
-                'if': {'column_id': 'alert'},
-                'backgroundColor': '#fff3cd'
-            },
-            {
-                'if': {'column_id': 'critic'},
-                'backgroundColor': '#f8d7da'
-            }
-        ],
-        sort_action='native',
-        page_size=10
-    )
 
 
 def get_essay_options(df):
