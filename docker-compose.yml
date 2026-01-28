@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Backend service: Runs data processing pipeline
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: multi-technical-alerts-backend
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATA_ROOT=/app/data/oil
+      - LOGS_DIR=/app/logs
+      - MAX_WORKERS=18
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    # Run pipeline once on startup (for scheduled runs, use cron or scheduler)
+    command: python main.py
+
+  # Dashboard service: Serves Dash web application
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: multi-technical-alerts-dashboard
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=8050
+      - DATA_ROOT=/app/data/oil
+    volumes:
+      # Mount processed data (read-only for dashboard)
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # Only start if dashboard is implemented
+    # Comment out this service if dashboard files don't exist yet
+
+# Shared volume for data persistence
+volumes:
+  data:
+  logs:
