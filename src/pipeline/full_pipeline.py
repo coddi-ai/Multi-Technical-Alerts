@@ -13,6 +13,7 @@ from config.logging_config import setup_logging
 from src.utils.logger import get_logger
 from src.pipeline.bronze_to_silver import run_bronze_to_silver_pipeline
 from src.pipeline.silver_to_gold import run_silver_to_gold_pipeline
+from src.data.s3_uploader import S3Uploader
 
 # Load environment variables
 load_dotenv()
@@ -22,7 +23,8 @@ def run_full_pipeline(
     clients: List[str] = None,
     recalculate_limits: bool = False,
     generate_ai: bool = True,
-    max_workers: int = None
+    max_workers: int = None,
+    upload_to_s3: bool = True
 ) -> Dict:
     """
     Run complete data processing pipeline for all clients.
@@ -34,12 +36,14 @@ def run_full_pipeline(
     4. Classify samples
     5. Generate AI recommendations
     6. Export results
+    7. Upload to S3 (if enabled)
     
     Args:
         clients: List of client names (default: from settings)
         recalculate_limits: If True, recalculate Stewart Limits
         generate_ai: If True, generate AI recommendations
-        max_workers: Number of parallel workers (default: from settings)
+        max_workers: Number of parallel workers for AI (default: from settings)
+        upload_to_s3: If True, upload Silver and Golden layers to S3
     
     Returns:
         Dictionary with results for each client
@@ -63,6 +67,14 @@ def run_full_pipeline(
     logger.info(f"Recalculate limits: {recalculate_limits}")
     logger.info(f"Generate AI: {generate_ai}")
     logger.info(f"Max workers: {max_workers}")
+    logger.info(f"Upload to S3: {upload_to_s3}")
+    
+    # Initialize S3 uploader if enabled
+    s3_uploader = None
+    if upload_to_s3:
+        s3_uploader = S3Uploader()
+        if s3_uploader.s3_client is None:
+            logger.warning("S3 upload requested but credentials not configured - uploads will be skipped")
     
     # Initialize OpenAI client
     openai_client = None
@@ -113,6 +125,12 @@ def run_full_pipeline(
             }
             
             logger.info(f"[{client}] Pipeline complete: {results[client]}")
+            
+            # Upload to S3 if enabled
+            if s3_uploader and s3_uploader.s3_client:
+                logger.info(f"[{client}] Uploading to S3...")
+                upload_results = s3_uploader.upload_all_layers(client)
+                results[client]['s3_upload'] = upload_results
         
         except Exception as e:
             logger.error(f"[{client}] Pipeline failed: {e}", exc_info=True)

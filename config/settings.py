@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     # API Keys
     openai_api_key: str = Field(..., description="OpenAI API key for recommendations")
     
+    # AWS S3 Configuration
+    access_key: str = Field(default="", description="AWS Access Key for S3")
+    secret_key: str = Field(default="", description="AWS Secret Key for S3")
+    bucket_name: str = Field(default="", description="AWS S3 Bucket Name")
+    aws_s3_prefix: str = Field(default="MultiTechnique Alerts/oil/", description="S3 prefix for data storage")
+    
     # Paths
     data_root: Path = Field(default=Path("data"), description="Root data directory")
     logs_dir: Path = Field(default=Path("logs"), description="Logs directory")
