@@ -155,14 +155,22 @@ def run_silver_to_gold_pipeline(
     machine_df = get_machine_status(df)
     
     # Step 6: Export to Gold layer
-    output_dir = settings.get_processed_path()
+    logger.info(f"Step 6: Exporting to Gold layer")
     
-    logger.info(f"Step 6: Exporting to Gold layer: {output_dir}")
-    export_classified_reports(df, output_dir, client_upper)
+    # Export classified reports to Gold layer (to_consume/{client}/classified_reports.parquet)
+    classified_reports_path = settings.get_classified_reports_path(client_upper)
+    export_classified_reports(df, classified_reports_path, client_upper)
     
-    # Export machine status
-    machine_status_file = output_dir / f"{client_upper.lower()}_machine_status.parquet"
-    export_machine_status(machine_df, machine_status_file)
+    # Export machine status to Gold layer (to_consume/{client}/machine_status_current.parquet)
+    machine_status_path = settings.get_machine_status_path(client_upper)
+    export_machine_status(machine_df, machine_status_path)
+    
+    # Also export Stewart Limits to Silver layer (processed/stewart_limits.parquet) for reference
+    # This is shared across all clients
+    stewart_limits_parquet = settings.get_processed_path() / "stewart_limits.parquet"
+    if recalculate_limits:
+        from src.data.exporters import export_stewart_limits_parquet
+        export_stewart_limits_parquet(limits, stewart_limits_parquet)
     
     logger.info(f"===== Silver → Gold pipeline complete for {client_upper} =====")
     logger.info(f"Final stats: {len(df)} classified samples, {len(machine_df)} machines")

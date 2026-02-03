@@ -1,7 +1,8 @@
 """
-Main test runner for Multi-Technical-Alerts.
+Oil Analysis Data Pipeline
 
-Tests the complete pipeline from Bronze to Gold and validates output.
+Processes oil analysis data from Bronze to Gold layer, applying Stewart Limits
+and generating AI-powered maintenance recommendations.
 """
 
 import os
@@ -22,9 +23,9 @@ load_dotenv()
 
 
 def test_pipeline():
-    """Test the complete data processing pipeline."""
+    """Execute the complete oil analysis data processing pipeline."""
     print("=" * 80)
-    print("MULTI-TECHNICAL-ALERTS - PIPELINE TEST")
+    print("OIL ANALYSIS DATA PIPELINE")
     print("=" * 80)
     
     # Setup logging
@@ -86,53 +87,33 @@ def test_pipeline():
         return None
 
 
-def test_dashboard():
-    """Test dashboard launch (if dashboard is implemented)."""
-    print("\n" + "=" * 80)
-    print("DASHBOARD TEST")
-    print("=" * 80)
-    
-    # Check if dashboard module exists
-    dashboard_path = Path(__file__).parent / "dashboard" / "app.py"
-    
-    if not dashboard_path.exists():
-        print("⚠️  Dashboard not yet implemented")
-        print("   Dashboard files will be created in Phase 6")
-        return
-    
-    print("Dashboard implementation found")
-    print("To launch dashboard manually:")
-    print("  python dashboard/app.py")
-    print("\nDashboard will be available at: http://localhost:8050")
+
 
 
 def main():
-    """Main test execution."""
+    """Main pipeline execution."""
     print("\n")
     print("╔═══════════════════════════════════════════════════════════════╗")
-    print("║         MULTI-TECHNICAL-ALERTS - MODULAR SYSTEM TEST         ║")
+    print("║              OIL ANALYSIS DATA PIPELINE                      ║")
     print("╚═══════════════════════════════════════════════════════════════╝")
     print()
     
-    # Test 1: Pipeline
+    # Run pipeline
     results = test_pipeline()
     
-    # Test 2: Dashboard (informational)
-    test_dashboard()
-    
     print("\n" + "=" * 80)
-    print("ALL TESTS COMPLETE")
+    print("PIPELINE EXECUTION COMPLETE")
     print("=" * 80)
     
     if results and all('error' not in r for r in results.values()):
-        print("\n✅ All components working correctly!")
+        print("\n✅ Pipeline executed successfully!")
         print("\nNext steps:")
         print("1. Review output files in data/oil/processed/")
-        print("2. Implement dashboard (Phase 6) if needed")
-        print("3. Deploy using Docker (see deployment_guide_for_dummies.md)")
+        print("2. Gold layer data available for downstream consumption")
+        print("3. Deploy using Docker (see DEPLOYMENT.md)")
         return 0
     else:
-        print("\n⚠️  Some tests failed - check logs/main_test.log for details")
+        print("\n⚠️  Pipeline failed - check logs/main_test.log for details")
         return 1
 
 

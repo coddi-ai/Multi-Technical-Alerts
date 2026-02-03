@@ -80,12 +80,24 @@ class Settings(BaseSettings):
         return self.data_root / "raw" / client.lower()
     
     def get_to_consume_path(self, client: str) -> Path:
-        """Get to_consume data path for a client."""
+        """Get to_consume data path for a client (Silver layer output)."""
         return self.data_root / "to_consume" / f"{client.upper()}.parquet"
     
     def get_processed_path(self) -> Path:
-        """Get processed data path."""
+        """Get processed data path (Silver layer)."""
         return self.data_root / "processed"
+    
+    def get_gold_layer_path(self, client: str) -> Path:
+        """Get Gold layer path for a client."""
+        return self.data_root / "to_consume" / client.lower()
+    
+    def get_classified_reports_path(self, client: str) -> Path:
+        """Get classified reports path for a client (Gold layer)."""
+        return self.get_gold_layer_path(client) / "classified_reports.parquet"
+    
+    def get_machine_status_path(self, client: str) -> Path:
+        """Get machine status path for a client (Gold layer)."""
+        return self.get_gold_layer_path(client) / "machine_status_current.parquet"
     
     def get_stewart_limits_path(self) -> Path:
         """Get Stewart limits JSON path."""
@@ -98,11 +110,16 @@ class Settings(BaseSettings):
         
         # Create data directories
         for client in self.clients:
+            # Bronze layer
             self.get_raw_path(client).mkdir(parents=True, exist_ok=True)
+            
+            # Gold layer (to_consume/{client}/)
+            self.get_gold_layer_path(client).mkdir(parents=True, exist_ok=True)
         
+        # Silver layer
         self.get_processed_path().mkdir(parents=True, exist_ok=True)
         
-        # Create to_consume directory
+        # to_consume directory (for silver layer parquet files)
         (self.data_root / "to_consume").mkdir(parents=True, exist_ok=True)
 
 

@@ -91,46 +91,27 @@ def export_to_json(
 
 def export_classified_reports(
     df: pd.DataFrame,
-    output_dir: str | Path,
-    client: str
+    output_path: str | Path,
+    client: str = None
 ) -> None:
     """
-    Export classified reports (Gold layer) in multiple formats.
+    Export classified reports to Gold layer.
     
     Args:
         df: DataFrame with classified reports
-        output_dir: Directory for output files
-        client: Client name
+        output_path: Full path to output file (classified_reports.parquet)
+        client: Client name (for logging only)
     """
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    logger.info(f"Exporting classified reports for {client}")
+    client_name = client or "unknown"
+    logger.info(f"Exporting classified reports for {client_name} to Gold layer")
     
-    # Export as Parquet
-    parquet_path = output_dir / f"{client.lower()}_classified.parquet"
-    export_to_parquet(df, parquet_path)
+    # Export as Parquet (primary Gold layer output)
+    export_to_parquet(df, output_path)
     
-    # Export as Excel (Phase 1)
-    excel_path = output_dir / f"{client.lower()}_classified.xlsx"
-    export_to_excel(df, excel_path, sheet_name='Classified Reports')
-    
-    # Export summary as JSON
-    summary = {
-        'client': client,
-        'total_samples': len(df),
-        'status_distribution': df['report_status'].value_counts().to_dict() if 'report_status' in df.columns else {},
-        'total_units': df['unitId'].nunique() if 'unitId' in df.columns else 0,
-        'date_range': {
-            'min': df['sampleDate'].min().isoformat() if 'sampleDate' in df.columns else None,
-            'max': df['sampleDate'].max().isoformat() if 'sampleDate' in df.columns else None
-        }
-    }
-    
-    json_path = output_dir / f"{client.lower()}_summary.json"
-    export_to_json(summary, json_path)
-    
-    logger.info(f"Classified reports exported to {output_dir}")
+    logger.info(f"Classified reports exported to {output_path}")
 
 
 def export_machine_status(
