@@ -1,63 +1,112 @@
 # Oil Analysis Data Product
 
-**AI-Powered Oil Analysis Pipeline for Mining Equipment**
+**AI-Powered Oil Analysis Pipeline for Mining Equipment with S3 Integration**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-green.svg)](https://openai.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-green.svg)](https://openai.com/)
+[![AWS](https://img.shields.io/badge/AWS-S3-orange.svg)](https://aws.amazon.com/s3/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 
 ---
 
 ## 🎯 Overview
 
-This repository contains the **Oil Analysis Data Product** that processes mining equipment oil analysis data from raw laboratory results (Bronze layer) to analysis-ready insights (Gold layer). The system applies statistical threshold detection (Stewart Limits) and AI-powered maintenance recommendations to support fleet management decisions.
+This repository contains the **Oil Analysis Data Product** that processes mining equipment oil analysis data through a three-layer architecture: **Bronze → Silver → Golden**. The system applies statistical threshold detection (Stewart Limits) and AI-powered maintenance recommendations to support fleet management decisions.
 
 **Core Question Answered**: *"How is my fleet performing based on oil analysis?"*
 
+### Key Highlights
+
+- 🔄 **Two Processing Modes**: Historical (bulk + limits calculation) and Incremental (daily updates)
+- 🤖 **AI-Powered**: GPT-4o-mini recommendations for abnormal conditions
+- ☁️ **S3 Integration**: Automatic upload of Silver and Golden layers
+- 📊 **Multi-Client**: Independent processing for CDA and EMIN
+- 🏭 **Multi-Lab**: Supports ALS and Finning laboratory formats
+
 ---
 
-## 🏗️ System Capabilities
+## 🏗️ System Architecture
 
 ### Data Processing Pipeline
 
 ```
-Raw Lab Data → Harmonization → Statistical Analysis → Classification → AI Recommendations → Gold Layer
-  (Bronze)        (Silver)         (Limits)          (Status)        (Insights)         (Output)
+Bronze Layer → Silver Layer → Golden Layer → S3 Upload
+ (Raw Data)    (Harmonized)    (Analyzed)     (Cloud)
 ```
 
-### Key Features
+### Three-Layer Architecture
 
-- ✅ **Multi-Lab Integration**: Processes data from ALS and Finning laboratories
-- ✅ **Multi-Client Support**: Handles CDA and EMIN client data independently
-- ✅ **Stewart Limits**: Dynamic statistical thresholds (90th, 95th, 98th percentiles)
-- ✅ **Multi-Level Classification**: Essay → Report → Component → Machine status hierarchy
-- ✅ **AI Recommendations**: GPT-4 powered maintenance insights for abnormal conditions
-- ✅ **Parallel Processing**: 18-worker AI generation for fast execution
-- ✅ **Docker Ready**: Containerized deployment with docker-compose
+```
+data/
+├── bronze/{client}/              # Raw laboratory data (immutable)
+├── silver/{CLIENT}.parquet       # Harmonized, validated data
+└── golden/{client}/              # Analysis-ready outputs
+    ├── classified.parquet        # Classified reports with AI
+    ├── machine_status.parquet    # Aggregated machine health
+    └── stewart_limits.parquet    # Statistical thresholds
+```
+
+### S3 Mirror (Auto-synced)
+
+```
+s3://{BUCKET}/MultiTechnique Alerts/oil/
+├── silver/{CLIENT}.parquet
+└── golden/{client}/*.parquet
+```
+
+---
+
+## 🌟 Key Features
+
+### Data Processing
+
+- ✅ **Multi-Lab Integration**: ALS (Parquet) and Finning (Excel) formats
+- ✅ **Independent Clients**: CDA and EMIN processed separately
+- ✅ **Stewart Limits**: Dynamic percentile-based thresholds (90/95/98)
+- ✅ **Multi-Level Classification**: Essay → Report → Machine hierarchy
+- ✅ **Data Quality**: Validation, normalization, and filtering
+
+### AI & Automation
+
+- ✅ **GPT-4o-mini**: AI-powered maintenance recommendations
+- ✅ **Parallel Processing**: 18-worker concurrent AI generation
+- ✅ **Contextual Analysis**: Considers breached essays and machine history
+- ✅ **Auto-Upload**: S3 sync after each client completes
+
+### Deployment
+
+- ✅ **Docker Ready**: Containerized with docker-compose
+- ✅ **Environment-based**: Configuration via .env file
+- ✅ **Flexible Modes**: Historical or incremental processing
 
 ---
 
 ## 📊 Data Flow
 
 ### Input (Bronze Layer)
-- **Location**: `data/oil/raw/`
-- **Formats**: Excel (Finning), Parquet (ALS)
+- **Location**: `data/bronze/{client}/`
+- **Formats**: 
+  - CDA: Excel files from Finning Lab
+  - EMIN: Parquet files from ALS Lab
 - **Content**: Raw laboratory oil analysis results
+- **Storage**: Local only (not uploaded to S3)
 
 ### Processing (Silver Layer)
-- **Location**: `data/oil/processed/`
+- **Location**: `data/silver/{CLIENT}.parquet`
 - **Transformations**:
-  - Name normalization and standardization
-  - Missing value handling
-  - Data quality filtering (minimum 100 samples)
-  - Stewart Limits calculation
+  - Schema harmonization across clients
+  - Name normalization (machines, components)
+  - Data validation and quality checks
+  - Essay column standardization
+- **Storage**: Local + S3
 
-### Output (Gold Layer)
-- **Location**: `data/oil/processed/`
-- **Files**:
-  - `cda_summary.json`: Complete CDA client analysis
-  - `emin_summary.json`: Complete EMIN client analysis
-  - `stewart_limits.json`: Reference thresholds
+### Output (Golden Layer)
+- **Location**: `data/golden/{client}/`
+- **Files per Client**:
+  - `classified.parquet`: Classified reports with AI recommendations
+  - `machine_status.parquet`: Aggregated equipment health status
+  - `stewart_limits.parquet`: Statistical thresholds for classification
+- **Storage**: Local + S3
 
 ---
 
@@ -67,27 +116,56 @@ Raw Lab Data → Harmonization → Statistical Analysis → Classification → A
 
 - Python 3.11+
 - OpenAI API key (for AI recommendations)
+- AWS credentials (optional, for S3 upload)
 
 ### Installation
 
 ```bash
 # Clone repository
 git clone <repository-url>
-cd oil-analysis
+cd Multi-Technical-Alerts
+
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Linux/Mac
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+# Edit .env and add your credentials:
+#   - OPENAI_API_KEY (required)
+#   - ACCESS_KEY, SECRET_KEY, BUCKET_NAME (optional for S3)
 ```
 
 ### Running the Pipeline
 
+#### Historical Processing (with Stewart Limits calculation)
+
 ```bash
-# Run complete pipeline
 python main.py
+```
+
+This will:
+1. Load all historical data from Bronze layer
+2. Calculate Stewart Limits based on historical distribution
+3. Classify all samples
+4. Generate AI recommendations
+5. Upload to S3 (if configured)
+
+#### Incremental Processing (daily updates)
+
+```python
+from src.pipeline.full_pipeline import run_full_pipeline
+
+# Daily mode: reuse existing Stewart Limits
+results = run_full_pipeline(
+    recalculate_limits=False,  # Use existing limits
+    generate_ai=True,
+    upload_to_s3=True
+)
 ```
 
 ### Using Docker
@@ -98,6 +176,8 @@ docker-compose up
 
 # Or build manually
 docker build -f Dockerfile.backend -t oil-analysis .
+docker run -p 8050:8050 oil-analysis
+```
 docker run -e OPENAI_API_KEY=your_key oil-analysis
 ```
 
