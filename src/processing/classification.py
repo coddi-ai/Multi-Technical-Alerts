@@ -91,10 +91,11 @@ def classify_essays(
     """
     client = sample.get('client', '')
     machine = sample.get('machineName', '')
-    component = sample.get('componentName', '')
+    # Use normalized component name for limit lookup (preserves original componentName in output)
+    component_normalized = sample.get('componentNameNormalized', sample.get('componentName', ''))
     
-    # Get limits for this machine/component
-    sel_limits = limits.get(client, {}).get(machine, {}).get(component, {})
+    # Get limits for this machine/component (using normalized component name)
+    sel_limits = limits.get(client, {}).get(machine, {}).get(component_normalized, {})
     
     essays_broken = []
     
@@ -104,11 +105,16 @@ def classify_essays(
         condenatorio = sel_limits.get(essay, {}).get('threshold_alert', np.nan)
         critico = sel_limits.get(essay, {}).get('threshold_critic', np.nan)
         
-        # Get measured value
+        # Get measured value and ensure it's numeric
         value = sample.get(essay, np.nan)
+        try:
+            value = float(value) if not pd.isna(value) else np.nan
+        except (ValueError, TypeError):
+            # Skip non-numeric values
+            continue
         
         # Skip if value is invalid or below marginal threshold
-        if pd.isna(value) or value < marginal or pd.isna(marginal):
+        if pd.isna(value) or pd.isna(marginal) or value < marginal:
             continue
         
         # Identify threshold

@@ -169,7 +169,8 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/silver/{CLIENT}.parquet
 | `machineBrand` | string | Machine brand | 'Caterpillar' |
 | `machineHours` | float | Operating hours | 15420.5 |
 | `machineSerialNumber` | string | Machine serial | 'ABC123' |
-| `componentName` | string | Component analyzed | 'motor diesel', 'transmision' |
+| `componentName` | string | Component analyzed (original with position) | 'motor diesel', 'mando final izquierdo' |
+| `componentNameNormalized` | string | Component normalized for Stewart Limits | 'motor diesel', 'mando final' |
 | `componentHours` | float | Component hours | 8230.0 |
 | `componentSerialNumber` | string | Component serial | 'ENG456' |
 | `oilMeter` | float | Oil meter reading | 1250.5 |
@@ -193,6 +194,12 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/silver/{CLIENT}.parquet
 ✅ Component hours <= Machine hours  
 ✅ No duplicate sample numbers  
 ✅ All essay columns present (filled with 0 if missing)
+
+**Note on Component Names**:
+- `componentName`: Preserves original granularity (e.g., "mando final izquierdo", "mando final derecho", "maza izquierda")
+- `componentNameNormalized`: Grouped version for Stewart Limits calculation (e.g., "mando final", "maza")
+- Golden layer reports use original `componentName` for detailed visibility
+- Stewart Limits use `componentNameNormalized` to ensure sufficient sample size
 
 ---
 
@@ -220,7 +227,7 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/golden/{client}/
 
 | Column | Type | Description | Example |
 |--------|------|-------------|---------|
-| **Base Columns** | | (All Silver layer columns) | |
+| **Base Columns** | | (All Silver layer columns including componentName and componentNameNormalized) | |
 | `essay_status_{essay}` | string | Essay classification | 'Normal', 'Marginal', 'Condenatorio', 'Critico' |
 | `breached_essays` | list[string] | Essays exceeding thresholds | ['Hierro', 'Cobre'] |
 | `essay_score` | int | Total essay points | 8 |
@@ -255,7 +262,7 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/golden/{client}/
 | `unitId` | string | Equipment unit ID | 'CAT-001' |
 | `machineName` | string | Machine type | 'camion' |
 | `machineModel` | string | Machine model | 'CAT 797F' |
-| `componentName` | string | Component | 'motor diesel' |
+| `componentName` | string | Component (original granularity) | 'mando final izquierdo' |
 | `lastSampleNumber` | string | Most recent sample | 'CDA-2024-100' |
 | `lastSampleDate` | date | Most recent date | '2024-02-01' |
 | `lastReportStatus` | string | Latest status | 'Alerta' |
@@ -280,7 +287,7 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/golden/{client}/
 |--------|------|-------------|---------|
 | `client` | string | Client identifier | 'CDA' |
 | `machine` | string | Normalized machine name | 'camion' |
-| `component` | string | Component name | 'motor diesel' |
+| `component` | string | Component name (normalized/grouped) | 'mando final' |
 | `essay` | string | Essay name | 'Hierro' |
 | `threshold_normal` | float | 90th percentile | 45.2 |
 | `threshold_alert` | float | 95th percentile | 58.7 |
@@ -290,6 +297,7 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/golden/{client}/
 - Based on historical data for each client independently
 - Prevents data leakage between clients
 - Recalculated in historical mode, loaded in incremental mode
+- **Component Grouping**: Uses `componentNameNormalized` to group similar components (e.g., "mando final izquierdo" + "mando final derecho" → "mando final") ensuring sufficient sample size for statistical validity
 
 **Sample Count**: ~300-500 limit combinations per client
 
@@ -316,14 +324,10 @@ S3: s3://{BUCKET}/MultiTechnique Alerts/oil/golden/{client}/
 ### S3 Paths
 
 ```
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/silver/CDA.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/silver/EMIN.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/cda/classified.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/cda/machine_status.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/cda/stewart_limits.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/emin/classified.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/emin/machine_status.parquet
-s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/emin/stewart_limits.parquet
+s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/silver/{CLIENT}.parquet
+s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/{client}/classified.parquet
+s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/{client}/machine_status.parquet
+s3://{BUCKET_NAME}/MultiTechnique Alerts/oil/golden/{client}/stewart_limits.parquet
 ```
 
 ### Configuration

@@ -16,7 +16,7 @@ def get_machine_status(
     df: pd.DataFrame,
     date_col: str = 'sampleDate',
     unit_col: str = 'unitId',
-    component_col: str = 'componentName',
+    component_col: str = 'componentName',  # Use original componentName for granular grouping
     status_col: str = 'report_status'
 ) -> pd.DataFrame:
     """

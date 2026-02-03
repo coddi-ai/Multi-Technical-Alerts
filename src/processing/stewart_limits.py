@@ -85,29 +85,29 @@ def calculate_all_limits(
     """
     logger.info(f"Calculating Stewart Limits for client {client}")
     
-    # Normalize machine and component names to avoid duplicates (CAMIÓN vs CAMION)
+    # Use pre-computed normalized columns from Silver layer
+    # machineName is already normalized in Silver layer
+    # componentNameNormalized is created specifically for Stewart Limits grouping
     df = df.copy()
-    df['machineName_normalized'] = name_protocol(df['machineName'])
-    df['componentName_normalized'] = name_protocol(df['componentName'])
     
     limits = {}
     
-    # Get unique normalized machines
-    machines = df['machineName_normalized'].unique()
+    # Get unique machines (already normalized in Silver layer)
+    machines = df['machineName'].unique()
     logger.info(f"Processing {len(machines)} normalized machines")
     
     for machine in machines:
         limits[machine] = {}
         
         # Get components for this machine (using normalized names)
-        machine_df = df[df['machineName_normalized'] == machine]
-        components = machine_df['componentName_normalized'].unique()
+        machine_df = df[df['machineName'] == machine]
+        components = machine_df['componentNameNormalized'].unique()
         
         for component in components:
             limits[machine][component] = {}
             
             # Filter data for this machine/component combination (using normalized names)
-            component_df = machine_df[machine_df['componentName_normalized'] == component].copy()
+            component_df = machine_df[machine_df['componentNameNormalized'] == component].copy()
             
             # Drop columns with all NaNs
             component_df = component_df.dropna(axis=1, how='all')

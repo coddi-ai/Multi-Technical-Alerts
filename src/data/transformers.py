@@ -294,8 +294,18 @@ def apply_full_transformation(
     else:
         raise ValueError(f"Unknown client: {client}")
     
-    # Normalize names
+    # Preserve original componentName and create normalized version for Stewart Limits
+    df['componentNameOriginal'] = df['componentName'].copy()
+    
+    # Normalize names (this will modify componentName, machineName, machineBrand)
     df = normalize_dataframe_names(df)
+    
+    # Rename normalized componentName to componentNameNormalized
+    df['componentNameNormalized'] = df['componentName']
+    
+    # Restore original componentName for Golden layer granularity
+    df['componentName'] = df['componentNameOriginal']
+    df = df.drop(columns=['componentNameOriginal'])
     
     # Add Phase 1 enhancements
     df = add_group_elements(df, essays_mapping_df)
