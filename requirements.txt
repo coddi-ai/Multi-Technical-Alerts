@@ -20,6 +20,10 @@ plotly>=5.17.0
 # Utilities
 tqdm>=4.66.0
 
+# Jupyter Notebooks
+jupyter>=1.0.0
+ipykernel>=6.27.0
+
 # Development
 pytest>=7.4.0
 black>=23.12.0

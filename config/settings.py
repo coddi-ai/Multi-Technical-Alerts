@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(..., description="OpenAI API key for recommendations")
     
     # Paths
-    data_root: Path = Field(default=Path("data/oil"), description="Root data directory")
+    data_root: Path = Field(default=Path("data"), description="Root data directory")
     logs_dir: Path = Field(default=Path("logs"), description="Logs directory")
     
     # Dashboard
@@ -75,33 +75,31 @@ class Settings(BaseSettings):
             return [c.strip() for c in v.split(",")]
         return v
     
-    def get_raw_path(self, client: str) -> Path:
-        """Get raw data path for a client."""
-        return self.data_root / "raw" / client.lower()
+    def get_bronze_path(self, client: str) -> Path:
+        """Get bronze (raw) data path for a client."""
+        return self.data_root / "bronze" / client.lower()
     
-    def get_to_consume_path(self, client: str) -> Path:
-        """Get to_consume data path for a client (Silver layer output)."""
-        return self.data_root / "to_consume" / f"{client.upper()}.parquet"
+    def get_silver_path(self, client: str) -> Path:
+        """Get silver layer harmonized data path for a client."""
+        return self.data_root / "silver" / f"{client.upper()}.parquet"
     
-    def get_processed_path(self) -> Path:
-        """Get processed data path (Silver layer)."""
-        return self.data_root / "processed"
-    
-    def get_gold_layer_path(self, client: str) -> Path:
-        """Get Gold layer path for a client."""
-        return self.data_root / "to_consume" / client.lower()
+    def get_golden_path(self, client: str) -> Path:
+        """Get golden layer output path for a specific client."""
+        path = self.data_root / "golden" / client.lower()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
     
     def get_classified_reports_path(self, client: str) -> Path:
-        """Get classified reports path for a client (Gold layer)."""
-        return self.get_gold_layer_path(client) / "classified_reports.parquet"
+        """Get classified reports path (Golden layer)."""
+        return self.get_golden_path(client) / "classified.parquet"
     
     def get_machine_status_path(self, client: str) -> Path:
-        """Get machine status path for a client (Gold layer)."""
-        return self.get_gold_layer_path(client) / "machine_status_current.parquet"
+        """Get machine status path (Golden layer)."""
+        return self.get_golden_path(client) / "machine_status.parquet"
     
-    def get_stewart_limits_path(self) -> Path:
-        """Get Stewart limits JSON path."""
-        return self.get_processed_path() / "stewart_limits.json"
+    def get_stewart_limits_path(self, client: str) -> Path:
+        """Get Stewart limits path (Golden layer)."""
+        return self.get_golden_path(client) / "stewart_limits.parquet"
     
     def create_directories(self) -> None:
         """Create necessary directories if they don't exist."""
@@ -110,17 +108,14 @@ class Settings(BaseSettings):
         
         # Create data directories
         for client in self.clients:
-            # Bronze layer
-            self.get_raw_path(client).mkdir(parents=True, exist_ok=True)
+            # Bronze layer (raw data)
+            self.get_bronze_path(client).mkdir(parents=True, exist_ok=True)
             
-            # Gold layer (to_consume/{client}/)
-            self.get_gold_layer_path(client).mkdir(parents=True, exist_ok=True)
+            # Golden layer (analysis-ready outputs) - per client
+            self.get_golden_path(client).mkdir(parents=True, exist_ok=True)
         
-        # Silver layer
-        self.get_processed_path().mkdir(parents=True, exist_ok=True)
-        
-        # to_consume directory (for silver layer parquet files)
-        (self.data_root / "to_consume").mkdir(parents=True, exist_ok=True)
+        # Silver layer (harmonized data)
+        (self.data_root / "silver").mkdir(parents=True, exist_ok=True)
 
 
 # Global settings instance

@@ -34,8 +34,8 @@ def run_bronze_to_silver_pipeline(
     
     Args:
         client: Client name ('CDA' or 'EMIN')
-        essays_mapping_file: Path to essays mapping file (default: data/oil/essays_elements.xlsx)
-        output_file: Path to output file (default: to_consume/{CLIENT}.parquet)
+        essays_mapping_file: Path to essays mapping file (default: data/essays_elements.xlsx)
+        output_file: Path to output file (default: silver/{CLIENT}.parquet)
     
     Returns:
         Transformed DataFrame (Silver layer)
@@ -58,10 +58,10 @@ def run_bronze_to_silver_pipeline(
     logger.info(f"Step 2: Loading raw data for {client_upper}")
     
     if client_upper == 'CDA':
-        raw_folder = settings.get_raw_path(client)
+        raw_folder = settings.get_bronze_path(client)
         df = load_cda_data(raw_folder)
     elif client_upper == 'EMIN':
-        raw_file = settings.get_raw_path(client) / "muestrasAlsHistoricos.parquet"
+        raw_file = settings.get_bronze_path(client) / "muestrasAlsHistoricos.parquet"
         df = load_emin_data(raw_file)
     else:
         raise ValueError(f"Unknown client: {client}")
@@ -97,7 +97,7 @@ def run_bronze_to_silver_pipeline(
     
     # Step 5: Export to Silver layer
     if output_file is None:
-        output_file = settings.get_to_consume_path(client_upper)
+        output_file = settings.get_silver_path(client_upper)
     
     logger.info(f"Step 5: Exporting to Silver layer: {output_file}")
     export_to_parquet(df, output_file)

@@ -126,10 +126,6 @@ def export_machine_status(
         output_path: Path to output file
     """
     export_to_parquet(df, output_path)
-    
-    # Also export as Excel for easy viewing
-    excel_path = Path(output_path).with_suffix('.xlsx')
-    export_to_excel(df, excel_path, sheet_name='Machine Status')
 
 
 def export_component_summary(
@@ -196,9 +192,5 @@ def export_stewart_limits_parquet(
     
     logger.info(f"Exporting {len(df)} limit thresholds to {output_path}")
     export_to_parquet(df, output_path)
-    
-    # Also export as Excel for easy viewing
-    excel_path = output_path.with_suffix('.xlsx')
-    export_to_excel(df, excel_path, sheet_name='Stewart Limits')
     
     return df

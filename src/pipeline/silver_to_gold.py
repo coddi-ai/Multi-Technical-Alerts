@@ -44,8 +44,8 @@ def run_silver_to_gold_pipeline(
     Args:
         client: Client name ('CDA' or 'EMIN')
         openai_client: OpenAI client instance
-        input_file: Path to Silver layer file (default: to_consume/{CLIENT}.parquet)
-        stewart_limits_file: Path to Stewart Limits JSON (default: processed/stewart_limits.json)
+        input_file: Path to Silver layer file (default: silver/{CLIENT}.parquet)
+        stewart_limits_file: Path to Stewart Limits Parquet (default: golden/stewart_limits.parquet)
         recalculate_limits: If True, recalculate limits instead of loading
         generate_ai: If True, generate AI recommendations (requires API key)
         max_workers: Number of parallel workers for AI generation
@@ -60,7 +60,7 @@ def run_silver_to_gold_pipeline(
     
     # Step 1: Load Silver layer data
     if input_file is None:
-        input_file = settings.get_to_consume_path(client_upper)
+        input_file = settings.get_silver_path(client_upper)
     
     logger.info(f"Step 1: Loading Silver layer data from {input_file}")
     df = safe_read_parquet(input_file)
@@ -85,7 +85,7 @@ def run_silver_to_gold_pipeline(
     
     # Step 2: Calculate or load Stewart Limits
     if stewart_limits_file is None:
-        stewart_limits_file = settings.get_stewart_limits_path()
+        stewart_limits_file = settings.get_stewart_limits_path(client_upper)
     
     if recalculate_limits:
         logger.info("Step 2: Calculating Stewart Limits")
@@ -106,23 +106,11 @@ def run_silver_to_gold_pipeline(
             )
         )
         
-        # Load existing limits or create new dict
-        if stewart_limits_file.exists():
-            all_limits = load_stewart_limits(stewart_limits_file)
-        else:
-            all_limits = {}
+        # Save this client's limits to their own file
+        limits_dict = {client_upper: client_limits}
+        save_limits_to_parquet(limits_dict, stewart_limits_file)
         
-        # Update with new limits for this client
-        all_limits[client_upper] = client_limits
-        
-        # Save updated limits
-        save_limits_to_json(all_limits, stewart_limits_file)
-        
-        # Also save as Parquet (Phase 1)
-        parquet_limits_file = stewart_limits_file.with_suffix('.parquet')
-        save_limits_to_parquet(all_limits, parquet_limits_file)
-        
-        limits = all_limits
+        limits = limits_dict
     else:
         logger.info(f"Step 2: Loading Stewart Limits from {stewart_limits_file}")
         limits = load_stewart_limits(stewart_limits_file)
@@ -154,23 +142,22 @@ def run_silver_to_gold_pipeline(
     logger.info("Step 5: Aggregating machine statuses")
     machine_df = get_machine_status(df)
     
-    # Step 6: Export to Gold layer
-    logger.info(f"Step 6: Exporting to Gold layer")
+    # Step 6: Export to Golden layer
+    logger.info(f"Step 6: Exporting to Golden layer")
     
-    # Export classified reports to Gold layer (to_consume/{client}/classified_reports.parquet)
+    # Export classified reports to Golden layer
     classified_reports_path = settings.get_classified_reports_path(client_upper)
     export_classified_reports(df, classified_reports_path, client_upper)
     
-    # Export machine status to Gold layer (to_consume/{client}/machine_status_current.parquet)
+    # Export machine status to Golden layer
     machine_status_path = settings.get_machine_status_path(client_upper)
     export_machine_status(machine_df, machine_status_path)
     
-    # Also export Stewart Limits to Silver layer (processed/stewart_limits.parquet) for reference
-    # This is shared across all clients
-    stewart_limits_parquet = settings.get_processed_path() / "stewart_limits.parquet"
+    # Export Stewart Limits to Golden layer (per client)
     if recalculate_limits:
+        stewart_limits_path = settings.get_stewart_limits_path(client_upper)
         from src.data.exporters import export_stewart_limits_parquet
-        export_stewart_limits_parquet(limits, stewart_limits_parquet)
+        export_stewart_limits_parquet(limits, stewart_limits_path)
     
     logger.info(f"===== Silver → Gold pipeline complete for {client_upper} =====")
     logger.info(f"Final stats: {len(df)} classified samples, {len(machine_df)} machines")

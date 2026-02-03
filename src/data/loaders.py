@@ -106,10 +106,10 @@ def load_emin_data(file_path: str | Path) -> pd.DataFrame:
 
 def load_stewart_limits(file_path: str | Path) -> Dict:
     """
-    Load pre-computed Stewart Limits from JSON file.
+    Load pre-computed Stewart Limits from Parquet file.
     
     Args:
-        file_path: Path to stewart_limits.json
+        file_path: Path to stewart_limits.parquet
     
     Returns:
         Dictionary with limits structure: {client: {machine: {component: {essay: {threshold_normal, threshold_alert, threshold_critic}}}}}
@@ -121,8 +121,29 @@ def load_stewart_limits(file_path: str | Path) -> Dict:
         logger.warning(f"Stewart Limits file not found: {file_path}")
         return {}
     
-    with open(file_path, 'r', encoding='utf-8') as f:
-        limits = json.load(f)
+    # Load from Parquet
+    df = pd.read_parquet(file_path)
+    
+    # Reconstruct nested dictionary structure
+    limits = {}
+    for _, row in df.iterrows():
+        client = row['client']
+        machine = row['machine']
+        component = row['component']
+        essay = row['essay']
+        
+        if client not in limits:
+            limits[client] = {}
+        if machine not in limits[client]:
+            limits[client][machine] = {}
+        if component not in limits[client][machine]:
+            limits[client][machine][component] = {}
+        
+        limits[client][machine][component][essay] = {
+            'threshold_normal': row['threshold_normal'],
+            'threshold_alert': row['threshold_alert'],
+            'threshold_critic': row['threshold_critic']
+        }
     
     logger.info(f"Loaded Stewart Limits for {len(limits)} clients")
     return limits

@@ -108,9 +108,9 @@ def main():
     if results and all('error' not in r for r in results.values()):
         print("\n✅ Pipeline executed successfully!")
         print("\nNext steps:")
-        print("1. Review output files in data/oil/processed/")
+        print("1. Review output files in data/golden/")
         print("2. Gold layer data available for downstream consumption")
-        print("3. Deploy using Docker (see DEPLOYMENT.md)")
+        print("3. Deploy using Docker (see docs/)")
         return 0
     else:
         print("\n⚠️  Pipeline failed - check logs/main_test.log for details")
