@@ -220,7 +220,7 @@ def oil_analysis_pipeline(client):
 
 - **Bronze**: Indefinite (source of truth)
 - **Silver**: 1 year (for reprocessing)
-- **Gold**: Latest version + 30 days history
+- **Gold**: Latest version 
 
 ---
 
@@ -313,13 +313,13 @@ def oil_analysis_pipeline(client):
 ## 🎯 Data Mesh Principles
 
 ### Domain Ownership
-- **Owner**: Predictive Maintenance Team
+- **Owner**: Data Team
 - **Responsibility**: Data quality, schema evolution, SLA compliance
 
 ### Data as a Product
 - **Product**: Gold layer JSON files
 - **Contract**: Versioned schema with backward compatibility
-- **SLA**: 99% availability, <1 hour freshness
+- **SLA**: 99% availability, daily freshness
 
 ### Self-Serve Infrastructure
 - **Deployment**: Docker Compose (one command)
@@ -405,7 +405,7 @@ logs/
 
 ## 📞 Support & Contact
 
-**Data Product Owner**: Predictive Maintenance Team  
-**Technical Lead**: [Name]  
+**Data Product Owner**: Data Team
+**Technical Lead**: Patricio Ortiz  
 **Documentation**: `docs/` folder in repository  
 **Issue Tracking**: GitHub Issues

@@ -469,7 +469,7 @@ No validation (accept as-is from laboratories)
 
 ## 🔗 Integration Points
 
-### S3 Bucket Structure (Future)
+### S3 Bucket Structure
 
 ```
 s3://oil-analysis-data-product/
@@ -483,7 +483,7 @@ s3://oil-analysis-data-product/
     └── machine_status_current.parquet
 ```
 
-### API Interface (Future)
+### API Interface 
 
 **Endpoint**: `GET /api/v1/{client}/classified-reports`  
 **Response Format**: JSON (paginated)  
@@ -493,10 +493,9 @@ s3://oil-analysis-data-product/
 
 ## 📞 Support
 
-**Data Contract Owner**: Oil Analysis Data Product Team  
-**Contact**: data-products@company.com  
+**Data Contract Owner**: Data Team
+**Contact**: patricio@coddi.ai 
 **Documentation**: This file + inline code docstrings  
-**Schema Registry**: (Future: centralized schema registry)
 
 ---
 
